@@ -1,0 +1,8 @@
+# Exclude these directories from being packaged
+.git/
+node_modules/
+cdk.out/
+dist/
+test/
+.github/
+.vscode/
