@@ -1,62 +1,145 @@
-import { Injectable } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
-import { Cart, CartStatuses } from '../models';
-import { PutCartPayload } from 'src/order/type';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+
+import { CartItem } from 'src/models/cart-item.entity';
+import { Cart, CartStatus } from 'src/models/cart.entity';
 
 @Injectable()
 export class CartService {
-  private userCarts: Record<string, Cart> = {};
+  constructor(
+    @InjectRepository(Cart)
+    private cartRepository: Repository<Cart>,
+    @InjectRepository(CartItem)
+    private cartItemRepository: Repository<CartItem>,
+  ) {}
 
-  findByUserId(userId: string): Cart {
-    return this.userCarts[userId];
-  }
+  async findByUserId(userId: string): Promise<Cart> {
+    const cart = await this.cartRepository.findOne({
+      where: {
+        userId: userId,
+        status: CartStatus.OPEN,
+      },
+      relations: ['items'],
+    });
 
-  createByUserId(user_id: string): Cart {
-    const timestamp = Date.now();
-
-    const userCart = {
-      id: randomUUID(),
-      user_id,
-      created_at: timestamp,
-      updated_at: timestamp,
-      status: CartStatuses.OPEN,
-      items: [],
-    };
-
-    this.userCarts[user_id] = userCart;
-
-    return userCart;
-  }
-
-  findOrCreateByUserId(userId: string): Cart {
-    const userCart = this.findByUserId(userId);
-
-    if (userCart) {
-      return userCart;
+    if (!cart) {
+      return this.createCart(userId);
     }
 
-    return this.createByUserId(userId);
+    return cart;
   }
 
-  updateByUserId(userId: string, payload: PutCartPayload): Cart {
-    const userCart = this.findOrCreateByUserId(userId);
+  async createCart(userId: string): Promise<Cart> {
+    const newCart = this.cartRepository.create({
+      userId,
+      status: CartStatus.OPEN,
+      items: [],
+    });
 
-    const index = userCart.items.findIndex(
-      ({ product }) => product.id === payload.product.id,
+    return this.cartRepository.save(newCart);
+  }
+
+  async updateCart(cart: Cart): Promise<Cart> {
+    return this.cartRepository.save(cart);
+  }
+
+  async findOrCreateByUserId(userId: string): Promise<Cart> {
+    return this.findByUserId(userId); // This already creates a cart if not found
+  }
+
+  async updateByUserId(
+    userId: string,
+    payload: { productId: string; count: number },
+  ): Promise<Cart> {
+    return this.addItem(userId, payload.productId, payload.count);
+  }
+
+  async removeByUserId(userId: string): Promise<void> {
+    const cart = await this.findByUserId(userId);
+
+    if (cart) {
+      cart.items = [];
+      await this.updateCart(cart);
+    }
+  }
+
+  async addItem(
+    userId: string,
+    productId: string,
+    count: number,
+  ): Promise<Cart> {
+    const cart = await this.findByUserId(userId);
+
+    if (count <= 0) {
+      return this.removeItem(userId, productId);
+    }
+
+    // Check if the item already exists in the cart
+    const existingItemIndex = cart.items?.findIndex(
+      (item) => item.productId === productId,
     );
 
-    if (index === -1) {
-      userCart.items.push(payload);
-    } else if (payload.count === 0) {
-      userCart.items.splice(index, 1);
+    if (existingItemIndex >= 0 && cart.items) {
+      // Update existing item count
+      cart.items[existingItemIndex].count = count;
     } else {
-      userCart.items[index] = payload;
+      // Add new item
+      if (!cart.items) {
+        cart.items = [];
+      }
+
+      const newItem = this.cartItemRepository.create({
+        cartId: cart.id,
+        productId,
+        count,
+      });
+
+      cart.items.push(newItem);
     }
 
-    return userCart;
+    return this.updateCart(cart);
   }
 
-  removeByUserId(userId): void {
-    this.userCarts[userId] = null;
+  async removeItem(userId: string, productId: string): Promise<Cart> {
+    const cart = await this.findByUserId(userId);
+
+    if (!cart) {
+      throw new NotFoundException(`Cart not found for user: ${userId}`);
+    }
+
+    // Remove the item from the cart
+    if (cart.items) {
+      cart.items = cart.items.filter((item) => item.productId !== productId);
+    }
+
+    return this.updateCart(cart);
+  }
+
+  async clearCart(userId: string): Promise<Cart> {
+    const cart = await this.findByUserId(userId);
+
+    if (!cart) {
+      throw new NotFoundException(`Cart not found for user: ${userId}`);
+    }
+
+    // Clear all items from the cart
+    cart.items = [];
+
+    return this.updateCart(cart);
+  }
+
+  async changeStatus(cartId: string, status: CartStatus): Promise<Cart> {
+    const cart = await this.cartRepository.findOne({
+      where: { id: cartId },
+      relations: ['items'],
+    });
+
+    if (!cart) {
+      throw new NotFoundException(`Cart not found: ${cartId}`);
+    }
+
+    cart.status = status;
+    return this.updateCart(cart);
   }
 }

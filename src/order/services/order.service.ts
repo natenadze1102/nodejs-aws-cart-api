@@ -1,50 +1,91 @@
 import { Injectable } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
-import { Order } from '../models';
-import { CreateOrderPayload, OrderStatus } from '../type';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
+import { Order } from '../../models/order.entity';
+import { StatusHistory } from '../../models/status-history.entity';
+import { CartService } from '../../cart/services/cart.service';
+import { OrderStatus, CreateOrderPayload } from '../type';
+import { CartStatus } from 'src/models/cart.entity';
 
 @Injectable()
 export class OrderService {
-  private orders: Record<string, Order> = {};
+  constructor(
+    @InjectRepository(Order)
+    private orderRepository: Repository<Order>,
+    @InjectRepository(StatusHistory)
+    private statusHistoryRepository: Repository<StatusHistory>,
+    private dataSource: DataSource,
+    private cartService: CartService,
+  ) {}
 
-  getAll() {
-    return Object.values(this.orders);
+  async getAll(): Promise<Order[]> {
+    return this.orderRepository.find();
   }
 
-  findById(orderId: string): Order {
-    return this.orders[orderId];
+  async findById(id: string): Promise<Order> {
+    return this.orderRepository.findOne({ where: { id } });
   }
 
-  create(data: CreateOrderPayload) {
-    const id = randomUUID() as string;
-    const order: Order = {
-      id,
-      ...data,
-      statusHistory: [
-        {
-          comment: '',
-          status: OrderStatus.Open,
-          timestamp: Date.now(),
-        },
-      ],
-    };
+  async create(payload: CreateOrderPayload): Promise<Order> {
+    // Use a transaction to ensure both the order is created and cart status is updated
+    return this.dataSource.transaction(async (transactionalEntityManager) => {
+      // Create the order
+      const order = transactionalEntityManager.create(Order, {
+        userId: payload.userId,
+        cartId: payload.cartId,
+        delivery: { address: payload.address },
+        status: OrderStatus.Open,
+        total: payload.total,
+      });
 
-    this.orders[id] = order;
+      const savedOrder = await transactionalEntityManager.save(Order, order);
 
-    return order;
+      // Add status history
+      const statusHistory = transactionalEntityManager.create(StatusHistory, {
+        orderId: savedOrder.id,
+        status: OrderStatus.Open,
+        comment: 'Order created',
+        timestamp: new Date(),
+      });
+
+      await transactionalEntityManager.save(StatusHistory, statusHistory);
+
+      // Update cart status to ORDERED
+      await this.cartService.changeStatus(payload.cartId, CartStatus.ORDERED);
+
+      return savedOrder;
+    });
   }
 
-  // TODO add  type
-  update(orderId: string, data: Order) {
-    const order = this.findById(orderId);
+  async updateStatus(
+    orderId: string,
+    status: OrderStatus,
+    comment = '',
+  ): Promise<Order> {
+    // Use a transaction to ensure both status is updated and history is recorded
+    return this.dataSource.transaction(async (transactionalEntityManager) => {
+      const order = await transactionalEntityManager.findOne(Order, {
+        where: { id: orderId },
+      });
 
-    if (!order) {
-      throw new Error('Order does not exist.');
-    }
+      if (!order) {
+        throw new Error(`Order not found: ${orderId}`);
+      }
 
-    this.orders[orderId] = {
-      ...data,
-      id: orderId,
-    };
+      order.status = status;
+      await transactionalEntityManager.save(Order, order);
+
+      // Add status history
+      const statusHistory = transactionalEntityManager.create(StatusHistory, {
+        orderId,
+        status,
+        comment,
+        timestamp: new Date(),
+      });
+
+      await transactionalEntityManager.save(StatusHistory, statusHistory);
+
+      return order;
+    });
   }
 }
