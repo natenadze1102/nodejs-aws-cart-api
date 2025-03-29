@@ -9,6 +9,8 @@ import {
   HttpStatus,
   HttpCode,
   BadRequestException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { BasicAuthGuard } from '../auth';
 import { OrderService } from '../order';
@@ -27,6 +29,7 @@ import {
 export class CartController {
   constructor(
     private cartService: CartService,
+    @Inject(forwardRef(() => OrderService))
     private orderService: OrderService,
   ) {}
 

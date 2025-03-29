@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Order } from '../../models/order.entity';
@@ -15,6 +15,7 @@ export class OrderService {
     @InjectRepository(StatusHistory)
     private statusHistoryRepository: Repository<StatusHistory>,
     private dataSource: DataSource,
+    @Inject(forwardRef(() => CartService))
     private cartService: CartService,
   ) {}
 
