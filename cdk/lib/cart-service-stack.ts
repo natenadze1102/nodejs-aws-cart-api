@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as logs from 'aws-cdk-lib/aws-logs'; // Add logs import
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
@@ -33,9 +34,12 @@ export class CartServiceStack extends cdk.Stack {
           '**/*.ts',
         ],
       }),
-      timeout: cdk.Duration.seconds(60), // Increased timeout
+      timeout: cdk.Duration.seconds(60),
       memorySize: 512,
-      // Remove VPC configuration entirely - no vpc or vpcSubnets properties
+
+      // Enhanced logging
+      logRetention: logs.RetentionDays.ONE_WEEK,
+      tracing: lambda.Tracing.ACTIVE, // Enable X-Ray tracing
 
       environment: {
         NODE_ENV: 'production',
@@ -44,29 +48,80 @@ export class CartServiceStack extends cdk.Stack {
         DB_USERNAME: 'postgres',
         DB_PASSWORD: '1tCez7g1ere6DNgTwQS7',
         DB_NAME: 'cartdb',
-        DB_SSL: process.env.DB_SSL || 'true',
-        DB_SYNC: process.env.DB_SYNC || 'false',
-        DB_LOGGING: process.env.DB_LOGGING || 'true', // Enable logging for troubleshooting
+        DB_SSL: 'true',
+        DB_SYNC: 'true', // Enable sync so tables are created if they don't exist
+        DB_LOGGING: 'true',
+        AUTH_DISABLED: 'false', // Add this to control authentication in code
+        DEBUG: '*', // Enable all debug logs
       },
     });
 
-    // Create API Gateway REST API
+    // Create API Gateway REST API with binary support and better CORS
     const api = new apigateway.RestApi(this, 'CartServiceApi', {
       restApiName: 'Cart Service API',
       description: 'API for Cart Service',
+      binaryMediaTypes: ['*/*'], // Allow all binary media types
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
-        allowHeaders: apigateway.Cors.DEFAULT_HEADERS,
+        allowHeaders: [
+          'Content-Type',
+          'X-Amz-Date',
+          'Authorization',
+          'X-Api-Key',
+          'X-Amz-Security-Token',
+          'X-Requested-With',
+          'Accept',
+          'Origin',
+          'Access-Control-Allow-Headers',
+          'Access-Control-Allow-Methods',
+          'Access-Control-Allow-Origin',
+        ],
+        allowCredentials: true,
+      },
+      deployOptions: {
+        stageName: 'prod',
+        tracingEnabled: true, // Enable API Gateway tracing
+        loggingLevel: apigateway.MethodLoggingLevel.INFO,
+        dataTraceEnabled: true, // Log request/response bodies
+        metricsEnabled: true,
       },
     });
 
-    // Integrate API Gateway with Lambda
+    // Enhanced Lambda integration
     const lambdaIntegration = new apigateway.LambdaIntegration(
       cartServiceLambda,
+      {
+        proxy: true, // Use Lambda Proxy integration
+        timeout: cdk.Duration.seconds(29), // API Gateway timeout (must be less than Lambda timeout)
+        allowTestInvoke: true, // Allow test invocations from API Gateway console
+      },
     );
 
-    // Add proxy resource to handle all paths
+    // Add explicit routes for health check, auth, and cart
+    const apiResource = api.root.addResource('api');
+
+    // Auth routes
+    const authResource = apiResource.addResource('auth');
+    const loginResource = authResource.addResource('login');
+    loginResource.addMethod('POST', lambdaIntegration);
+
+    const registerResource = authResource.addResource('register');
+    registerResource.addMethod('POST', lambdaIntegration);
+
+    // Profile and cart routes
+    const profileResource = apiResource.addResource('profile');
+    profileResource.addMethod('GET', lambdaIntegration);
+
+    const cartResource = profileResource.addResource('cart');
+    cartResource.addMethod('GET', lambdaIntegration);
+    cartResource.addMethod('PUT', lambdaIntegration);
+    cartResource.addMethod('DELETE', lambdaIntegration);
+
+    // Health check
+    api.root.addMethod('GET', lambdaIntegration);
+
+    // Catch-all route at the end
     api.root.addProxy({
       defaultIntegration: lambdaIntegration,
       anyMethod: true,

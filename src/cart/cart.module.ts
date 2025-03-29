@@ -1,6 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { CartController } from './cart.controller';
+import { CartController } from 'src/cart/cart.controller';
 import { CartService } from './services/cart.service';
 import { Cart } from '../models/cart.entity';
 import { CartItem } from '../models/cart-item.entity';

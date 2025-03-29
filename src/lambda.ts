@@ -2,88 +2,98 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Handler, Context, Callback } from 'aws-lambda';
 import { configure as serverlessExpress } from '@codegenie/serverless-express';
-import { Client } from 'pg';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import * as express from 'express';
 
 let cachedServer: Handler;
 
-async function testDatabaseConnection() {
-  console.log('Testing database connection...');
+async function bootstrap(): Promise<Handler> {
+  if (cachedServer) {
+    return cachedServer;
+  }
 
-  const client = new Client({
-    host: 'cart-service-db.cd66u40eafyf.eu-central-1.rds.amazonaws.com',
-    port: '5432',
-    user: 'postgres',
-    password: '1tCez7g1ere6DNgTwQS7',
-    database: 'cartdb',
-    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-    connectionTimeoutMillis: 10000, // Increased timeout
+  const expressApp = express();
+
+  // Add request logger middleware
+  expressApp.use((req, res, next) => {
+    console.log(`[REQUEST] ${req.method} ${req.path}`);
+    console.log('Headers:', JSON.stringify(req.headers));
+    next();
   });
 
-  try {
-    console.log(`Connecting to ${client.host}:${client.port}`);
-    await client.connect();
-    console.log('Database connection successful!');
-    const result = await client.query('SELECT NOW() as now');
-    console.log('Database query result:', result.rows[0]);
-    await client.end();
-    return true;
-  } catch (error) {
-    console.error('Database connection error:', error);
-    // Don't fail if we can't connect to the database
-    return false;
-  }
+  // Create NestJS app with enhanced logging
+  const nestApp = await NestFactory.create(
+    AppModule,
+    new ExpressAdapter(expressApp),
+    {
+      logger: ['log', 'error', 'warn', 'debug', 'verbose'],
+    },
+  );
+
+  nestApp.enableCors({
+    origin: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type,Accept,Authorization',
+    credentials: true,
+  });
+
+  await nestApp.init();
+
+  // Add error handling middleware
+  expressApp.use((err, req, res, next) => {
+    console.error('Express error handler:', err);
+    res.status(500).json({
+      statusCode: 500,
+      message: 'Internal server error',
+      error: err.message,
+    });
+  });
+
+  cachedServer = serverlessExpress({ app: expressApp });
+  return cachedServer;
 }
 
-async function bootstrap(): Promise<Handler> {
-  // Try to connect to DB but continue even if it fails
-  try {
-    await testDatabaseConnection();
-  } catch (error) {
-    console.error('Failed to test database connection:', error);
-    // Continue anyway
-  }
-
-  const app = await NestFactory.create(AppModule);
-  app.enableCors();
-
-  try {
-    await app.init();
-    console.log('NestJS app initialized successfully');
-  } catch (error) {
-    console.error('Failed to initialize NestJS app:', error);
-    throw error; // Rethrow to fail the bootstrap
-  }
-
-  const expressApp = app.getHttpAdapter().getInstance();
-  return serverlessExpress({ app: expressApp });
-}
-
-export const handler: Handler = async (
-  event: any,
-  context: Context,
-  callback: Callback,
-) => {
-  console.log('Lambda handler invoked with event:', JSON.stringify(event));
-
-  // Important: Set this to false to prevent waiting for event loop to empty
+export const handler: Handler = async (event, context, callback) => {
   context.callbackWaitsForEmptyEventLoop = false;
 
-  if (!cachedServer) {
-    try {
-      cachedServer = await bootstrap();
-    } catch (error) {
-      console.error('Bootstrap failed:', error);
-      return {
-        statusCode: 500,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: 'Internal server error during bootstrap',
-        }),
-      };
-    }
-  }
+  try {
+    console.log('Lambda event:', JSON.stringify(event, null, 2));
 
-  return cachedServer(event, context, callback);
+    // Log if authorization header is present
+    if (event.headers && event.headers.Authorization) {
+      console.log('Authorization header is present');
+    } else if (event.headers && event.headers.authorization) {
+      console.log('authorization header is present (lowercase)');
+      // Normalize header names (API Gateway can send lowercase headers)
+      event.headers.Authorization = event.headers.authorization;
+      delete event.headers.authorization;
+    } else {
+      console.log('No authorization header present in request');
+    }
+
+    // Initialize server if not already cached
+    if (!cachedServer) {
+      console.log('Initializing server...');
+      cachedServer = await bootstrap();
+      console.log('Server initialized');
+    }
+
+    // Handle the request with callback parameter
+    return cachedServer(event, context, callback);
+  } catch (error) {
+    console.error('Unhandled error in Lambda handler:', error);
+    return {
+      statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
+      body: JSON.stringify({
+        statusCode: 500,
+        message: 'Internal server error',
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      }),
+    };
+  }
 };
