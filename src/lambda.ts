@@ -1,20 +1,17 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import serverlessExpress from '@vendia/serverless-express';
-import express from 'express';
 import { Handler } from 'aws-lambda';
+import serverlessExpress from '@vendia/serverless-express';
 
+// Change this line: cachedServer should be Handler type, not Server
 let cachedServer: Handler;
 
 async function bootstrap(): Promise<Handler> {
-  const expressApp = express();
-  const nestApp = await NestFactory.create(AppModule);
-  nestApp.enableCors();
-  await nestApp.init();
+  const app = await NestFactory.create(AppModule);
+  app.enableCors();
+  await app.init();
 
-  const expressAdapter = nestApp.getHttpAdapter();
-  expressApp.use(expressAdapter.getInstance());
-
+  const expressApp = app.getHttpAdapter().getInstance();
   return serverlessExpress({ app: expressApp });
 }
 
