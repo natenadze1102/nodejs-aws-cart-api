@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { Handler } from 'aws-lambda';
-import * as serverlessExpress from '@vendia/serverless-express';
+import { Handler, Context, Callback } from 'aws-lambda';
+import { configure as serverlessExpress } from '@codegenie/serverless-express';
 import { Client } from 'pg';
 
 let cachedServer: Handler;
@@ -10,17 +10,17 @@ async function testDatabaseConnection() {
   console.log('Testing database connection...');
 
   const client = new Client({
-    host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT || '5432'),
-    user: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+    host: 'cart-service-db.cd66u40eafyf.eu-central-1.rds.amazonaws.com',
+    port: '5432',
+    user: 'postgres',
+    password: '1tCez7g1ere6DNgTwQS7',
+    database: 'cartdb',
     ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 10000, // Increased timeout
   });
 
   try {
-    console.log(`Connecting to ${process.env.DB_HOST}:${process.env.DB_PORT}`);
+    console.log(`Connecting to ${client.host}:${client.port}`);
     await client.connect();
     console.log('Database connection successful!');
     const result = await client.query('SELECT NOW() as now');
@@ -29,30 +29,60 @@ async function testDatabaseConnection() {
     return true;
   } catch (error) {
     console.error('Database connection error:', error);
+    // Don't fail if we can't connect to the database
     return false;
   }
 }
 
 async function bootstrap(): Promise<Handler> {
-  // Test database connection first
-  await testDatabaseConnection();
+  // Try to connect to DB but continue even if it fails
+  try {
+    await testDatabaseConnection();
+  } catch (error) {
+    console.error('Failed to test database connection:', error);
+    // Continue anyway
+  }
 
   const app = await NestFactory.create(AppModule);
   app.enableCors();
-  await app.init();
+
+  try {
+    await app.init();
+    console.log('NestJS app initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize NestJS app:', error);
+    throw error; // Rethrow to fail the bootstrap
+  }
 
   const expressApp = app.getHttpAdapter().getInstance();
-  return serverlessExpress.configure({ app: expressApp });
+  return serverlessExpress({ app: expressApp });
 }
 
-export const handler: Handler = async (event, context, callback) => {
+export const handler: Handler = async (
+  event: any,
+  context: Context,
+  callback: Callback,
+) => {
   console.log('Lambda handler invoked with event:', JSON.stringify(event));
 
-  // Prevent Lambda from waiting for event loop to empty
+  // Important: Set this to false to prevent waiting for event loop to empty
   context.callbackWaitsForEmptyEventLoop = false;
 
   if (!cachedServer) {
-    cachedServer = await bootstrap();
+    try {
+      cachedServer = await bootstrap();
+    } catch (error) {
+      console.error('Bootstrap failed:', error);
+      return {
+        statusCode: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: 'Internal server error during bootstrap',
+        }),
+      };
+    }
   }
 
   return cachedServer(event, context, callback);

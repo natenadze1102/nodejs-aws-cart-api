@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Handler, Context, Callback } from 'aws-lambda';
-import serverlessExpress from '@vendia/serverless-express';
+import { configure as serverlessExpress } from '@codegenie/serverless-express';
 
 let server: Handler;
 

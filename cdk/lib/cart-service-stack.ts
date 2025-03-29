@@ -1,4 +1,3 @@
-// In cart-service-stack.ts
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -17,7 +16,7 @@ export class CartServiceStack extends cdk.Stack {
     // Create Lambda function for the Cart Service
     const cartServiceLambda = new lambda.Function(this, 'CartServiceLambda', {
       runtime: Runtime.NODEJS_22_X,
-      handler: 'dist/src/lambda.handler', // This points to the compiled lambda handler in dist/src
+      handler: 'dist/src/lambda.handler',
       code: lambda.Code.fromAsset(path.join(__dirname, '../../../'), {
         exclude: [
           'cdk.out',
@@ -30,24 +29,24 @@ export class CartServiceStack extends cdk.Stack {
           '.git',
           'test',
           'coverage',
-          '**/*.map', // Source maps not needed in production
-          '**/*.ts', // TypeScript source files not needed in production
+          '**/*.map',
+          '**/*.ts',
         ],
       }),
-      timeout: cdk.Duration.seconds(30),
+      timeout: cdk.Duration.seconds(60), // Increased timeout
       memorySize: 512,
+      // Remove VPC configuration entirely - no vpc or vpcSubnets properties
 
       environment: {
         NODE_ENV: 'production',
-        // Database configuration
-        DB_HOST: process.env.DB_HOST || '',
-        DB_PORT: process.env.DB_PORT || '5432',
-        DB_USERNAME: process.env.DB_USERNAME || '',
-        DB_PASSWORD: process.env.DB_PASSWORD || '',
-        DB_NAME: process.env.DB_NAME || '',
+        DB_HOST: 'cart-service-db.cd66u40eafyf.eu-central-1.rds.amazonaws.com',
+        DB_PORT: '5432',
+        DB_USERNAME: 'postgres',
+        DB_PASSWORD: '1tCez7g1ere6DNgTwQS7',
+        DB_NAME: 'cartdb',
         DB_SSL: process.env.DB_SSL || 'true',
         DB_SYNC: process.env.DB_SYNC || 'false',
-        DB_LOGGING: process.env.DB_LOGGING || 'false',
+        DB_LOGGING: process.env.DB_LOGGING || 'true', // Enable logging for troubleshooting
       },
     });
 

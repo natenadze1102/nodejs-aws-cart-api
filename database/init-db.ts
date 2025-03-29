@@ -8,11 +8,12 @@ dotenv.config();
 
 async function initDB() {
   const client = new Client({
-    host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT || '5432'),
-    user: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+    host: 'cart-service-db.cd66u40eafyf.eu-central-1.rds.amazonaws.com',
+    port: '5432',
+    user: 'postgres',
+    password: '1tCez7g1ere6DNgTwQS7',
+    database: 'cartdb',
+
     ssl:
       process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
   });

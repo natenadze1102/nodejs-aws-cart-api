@@ -6,8 +6,8 @@ import { CartServiceStack } from '../lib/cart-service-stack';
 const app = new cdk.App();
 new CartServiceStack(app, 'CartServiceStack', {
   env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION || 'eu-central-1',
+    account: '595131344444',
+    region: 'eu-central-1',
   },
   description: 'Cart Service with PostgreSQL database',
 });

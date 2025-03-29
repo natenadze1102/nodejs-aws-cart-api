@@ -23,6 +23,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@codegenie/serverless-express": "^4.16.0",
     "@nestjs/common": "^10.0.3",
     "@nestjs/config": "^3.0.0",
     "@nestjs/core": "^10.0.3",
@@ -30,7 +31,6 @@
     "@nestjs/passport": "^10.0.0",
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/typeorm": "^11.0.0",
-    "@vendia/serverless-express": "^4.12.6",
     "aws-cdk": "^2.1006.0",
     "aws-cdk-lib": "^2.186.0",
     "aws-lambda": "^1.0.7",
