@@ -5,6 +5,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
+import { Runtime } from 'aws-cdk-lib/aws-lambda';
 
 // Load environment variables
 dotenv.config();
@@ -15,9 +16,9 @@ export class CartServiceStack extends cdk.Stack {
 
     // Create Lambda function for the Cart Service
     const cartServiceLambda = new lambda.Function(this, 'CartServiceLambda', {
-      runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'lambda.handler', // This points to the compiled lambda handler in dist/src
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../../dist/src'), {
+      runtime: Runtime.NODEJS_22_X,
+      handler: 'dist/src/lambda.handler', // This points to the compiled lambda handler in dist/src
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../'), {
         exclude: [
           'cdk.out',
           'cdk/node_modules',
