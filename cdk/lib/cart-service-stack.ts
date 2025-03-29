@@ -28,23 +28,13 @@ export class CartServiceStack extends cdk.Stack {
           'node_modules/.bin',
           '.git',
           'test',
-          'coverage'
+          'coverage',
         ],
-        bundling: {
-          image: lambda.Runtime.NODEJS_18_X.bundlingImage,
-          user: 'root',
-          command: [
-            'bash', '-c', [
-              'cp -r . /asset-output',
-              'cd /asset-output',
-              'npm ci --production'
-            ].join(' && ')
-          ]
-        }
+        // Remove bundling section to avoid Docker requirement
       }),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
-      
+
       environment: {
         NODE_ENV: 'production',
         // Database configuration
