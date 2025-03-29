@@ -16,10 +16,35 @@ export class CartServiceStack extends cdk.Stack {
     // Create Lambda function for the Cart Service
     const cartServiceLambda = new lambda.Function(this, 'CartServiceLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'dist/main.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../')),
+      handler: 'dist/src/lambda.handler', // This points to the compiled lambda handler in dist/src
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../'), {
+        exclude: [
+          'cdk.out',
+          'cdk/node_modules',
+          'node_modules/aws-cdk',
+          'node_modules/@types',
+          'node_modules/typescript',
+          'node_modules/jest',
+          'node_modules/.bin',
+          '.git',
+          'test',
+          'coverage'
+        ],
+        bundling: {
+          image: lambda.Runtime.NODEJS_18_X.bundlingImage,
+          user: 'root',
+          command: [
+            'bash', '-c', [
+              'cp -r . /asset-output',
+              'cd /asset-output',
+              'npm ci --production'
+            ].join(' && ')
+          ]
+        }
+      }),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
+      
       environment: {
         NODE_ENV: 'production',
         // Database configuration
