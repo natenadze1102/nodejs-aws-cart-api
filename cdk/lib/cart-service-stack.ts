@@ -16,8 +16,8 @@ export class CartServiceStack extends cdk.Stack {
     // Create Lambda function for the Cart Service
     const cartServiceLambda = new lambda.Function(this, 'CartServiceLambda', {
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: 'dist/src/lambda.handler', // This points to the compiled lambda handler in dist/src
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../'), {
+      handler: 'lambda.handler', // This points to the compiled lambda handler in dist/src
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../dist/src'), {
         exclude: [
           'cdk.out',
           'cdk/node_modules',
@@ -29,8 +29,9 @@ export class CartServiceStack extends cdk.Stack {
           '.git',
           'test',
           'coverage',
+          '**/*.map', // Source maps not needed in production
+          '**/*.ts', // TypeScript source files not needed in production
         ],
-        // Remove bundling section to avoid Docker requirement
       }),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
