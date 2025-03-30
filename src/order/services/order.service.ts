@@ -89,4 +89,11 @@ export class OrderService {
       return order;
     });
   }
+
+  async getStatusHistory(orderId: string): Promise<StatusHistory[]> {
+    return this.statusHistoryRepository.find({
+      where: { orderId },
+      order: { timestamp: 'DESC' },
+    });
+  }
 }

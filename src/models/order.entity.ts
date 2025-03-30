@@ -6,9 +6,11 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 import { OrderStatus } from '../order/type';
 import { Cart } from './cart.entity';
+import { StatusHistory } from './status-history.entity';
 
 @Entity('orders')
 export class Order {
@@ -48,5 +50,7 @@ export class Order {
 
   @ManyToOne(() => Cart)
   @JoinColumn({ name: 'cart_id' })
+  @OneToMany(() => StatusHistory, (statusHistory) => statusHistory.order)
+  statusHistory: StatusHistory[];
   cart: Cart;
 }

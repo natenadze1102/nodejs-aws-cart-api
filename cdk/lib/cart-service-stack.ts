@@ -118,6 +118,23 @@ export class CartServiceStack extends cdk.Stack {
     cartResource.addMethod('PUT', lambdaIntegration);
     cartResource.addMethod('DELETE', lambdaIntegration);
 
+    const orderResource = cartResource.addResource('order');
+    orderResource.addMethod('PUT', lambdaIntegration);
+    orderResource.addMethod('GET', lambdaIntegration);
+
+    const ordersResource = apiResource.addResource('orders');
+    ordersResource.addMethod('GET', lambdaIntegration);
+    ordersResource.addMethod('POST', lambdaIntegration);
+
+    const orderIdResource = ordersResource.addResource('{id}');
+    orderIdResource.addMethod('GET', lambdaIntegration);
+
+    const historyResource = orderIdResource.addResource('history');
+    historyResource.addMethod('GET', lambdaIntegration);
+
+    const orderStatusResource = orderIdResource.addResource('status');
+    orderStatusResource.addMethod('PUT', lambdaIntegration);
+
     // Health check
     api.root.addMethod('GET', lambdaIntegration);
 

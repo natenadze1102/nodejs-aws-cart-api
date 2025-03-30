@@ -31,6 +31,11 @@ export class OrderController {
     return await this.orderService.findById(id);
   }
 
+  @Get(':id/history')
+  async getOrderHistory(@Param('id') id: string) {
+    return await this.orderService.getStatusHistory(id);
+  }
+
   @Put(':id/status')
   async updateStatus(
     @Param('id') id: string,

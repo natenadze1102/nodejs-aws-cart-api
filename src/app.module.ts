@@ -20,7 +20,8 @@ import { OrderModule } from './order/order.module';
       database: 'cartdb',
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: process.env.DB_SYNC === 'true',
-      logging: process.env.DB_LOGGING === 'true',
+      logging: true,
+      logger: 'advanced-console',
       ssl:
         process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
     }),
