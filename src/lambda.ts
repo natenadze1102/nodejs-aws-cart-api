@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { Handler, Context, Callback } from 'aws-lambda';
+import { Handler } from 'aws-lambda';
 import { configure as serverlessExpress } from '@codegenie/serverless-express';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import * as express from 'express';
@@ -9,9 +9,11 @@ let cachedServer: Handler;
 
 async function bootstrap(): Promise<Handler> {
   if (cachedServer) {
+    console.log('Using cached server');
     return cachedServer;
   }
 
+  console.log('Creating new server instance');
   const expressApp = express();
 
   // Add request logger middleware
@@ -21,7 +23,7 @@ async function bootstrap(): Promise<Handler> {
     next();
   });
 
-  // Create NestJS app with enhanced logging
+  // Create NestJS app
   const nestApp = await NestFactory.create(
     AppModule,
     new ExpressAdapter(expressApp),
@@ -30,6 +32,7 @@ async function bootstrap(): Promise<Handler> {
     },
   );
 
+  // Enable CORS
   nestApp.enableCors({
     origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
@@ -37,51 +40,60 @@ async function bootstrap(): Promise<Handler> {
     credentials: true,
   });
 
+  // Add global prefix if needed
+  // nestApp.setGlobalPrefix('prod'); // Remove or adjust based on your API Gateway stage name
+
+  // Initialize the app
   await nestApp.init();
 
-  // Add error handling middleware
-  expressApp.use((err, req, res, next) => {
-    console.error('Express error handler:', err);
-    res.status(500).json({
-      statusCode: 500,
-      message: 'Internal server error',
-      error: err.message,
-    });
-  });
-
+  // Configure serverless-express
   cachedServer = serverlessExpress({ app: expressApp });
   return cachedServer;
 }
 
 export const handler: Handler = async (event, context, callback) => {
+  console.log(
+    'Lambda handler invoked with event:',
+    JSON.stringify(event, null, 2),
+  );
+
+  // Important: API Gateway stage mappings and base paths
+  // Check if path includes the stage name (like /prod/api/auth/register)
+  if (event.path && event.path.startsWith('/prod/')) {
+    console.log('Removing /prod prefix from path');
+    event.path = event.path.substring(5); // Remove '/prod' prefix
+  }
+
+  // Normalize auth header case (API Gateway sometimes lowercases headers)
+  if (event.headers) {
+    if (event.headers.authorization && !event.headers.Authorization) {
+      event.headers.Authorization = event.headers.authorization;
+      delete event.headers.authorization;
+    }
+  }
+
+  // For debugging
+  console.log('Processed path:', event.path);
+  console.log('Method:', event.httpMethod);
+
+  if (event.body && event.isBase64Encoded) {
+    try {
+      const decodedBody = Buffer.from(event.body, 'base64').toString();
+      console.log('Decoded body:', decodedBody);
+    } catch (error) {
+      console.error('Error decoding body:', error);
+    }
+  } else if (event.body) {
+    console.log('Body (not base64):', event.body);
+  }
+
   context.callbackWaitsForEmptyEventLoop = false;
 
   try {
-    console.log('Lambda event:', JSON.stringify(event, null, 2));
-
-    // Log if authorization header is present
-    if (event.headers && event.headers.Authorization) {
-      console.log('Authorization header is present');
-    } else if (event.headers && event.headers.authorization) {
-      console.log('authorization header is present (lowercase)');
-      // Normalize header names (API Gateway can send lowercase headers)
-      event.headers.Authorization = event.headers.authorization;
-      delete event.headers.authorization;
-    } else {
-      console.log('No authorization header present in request');
-    }
-
-    // Initialize server if not already cached
-    if (!cachedServer) {
-      console.log('Initializing server...');
-      cachedServer = await bootstrap();
-      console.log('Server initialized');
-    }
-
-    // Handle the request with callback parameter
-    return cachedServer(event, context, callback);
+    const server = cachedServer || (await bootstrap());
+    return server(event, context, callback);
   } catch (error) {
-    console.error('Unhandled error in Lambda handler:', error);
+    console.error('Error in handler:', error);
     return {
       statusCode: 500,
       headers: {
@@ -89,10 +101,8 @@ export const handler: Handler = async (event, context, callback) => {
         'Access-Control-Allow-Origin': '*',
       },
       body: JSON.stringify({
-        statusCode: 500,
         message: 'Internal server error',
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
       }),
     };
   }
