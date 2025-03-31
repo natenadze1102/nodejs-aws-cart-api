@@ -48,7 +48,7 @@ export class CartServiceStack extends cdk.Stack {
         DB_USERNAME: process.env.DB_USERNAME || '',
         DB_PASSWORD: process.env.DB_PASSWORD || '',
         DB_NAME: process.env.DB_NAME || '',
-        DB_SSL: process.env.DB_SS || true,
+        DB_SSL: process.env.DB_SS || 'true',
         DB_SYNC: 'true', // Enable sync so tables are created if they don't exist
         DB_LOGGING: 'true',
         AUTH_DISABLED: 'false', // Add this to control authentication in code
