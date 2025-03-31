@@ -8,7 +8,7 @@ import * as dotenv from 'dotenv';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 
 // Load environment variables
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '../../../.env') });
 
 export class CartServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -43,12 +43,12 @@ export class CartServiceStack extends cdk.Stack {
 
       environment: {
         NODE_ENV: 'production',
-        DB_HOST: 'cart-service-db.cd66u40eafyf.eu-central-1.rds.amazonaws.com',
-        DB_PORT: '5432',
-        DB_USERNAME: 'postgres',
-        DB_PASSWORD: '1tCez7g1ere6DNgTwQS7',
-        DB_NAME: 'cartdb',
-        DB_SSL: 'true',
+        DB_HOST: process.env.DB_HOST || '',
+        DB_PORT: process.env.DB_PORT || '5432',
+        DB_USERNAME: process.env.DB_USERNAME || '',
+        DB_PASSWORD: process.env.DB_PASSWORD || '',
+        DB_NAME: process.env.DB_NAME || '',
+        DB_SSL: process.env.DB_SS || true,
         DB_SYNC: 'true', // Enable sync so tables are created if they don't exist
         DB_LOGGING: 'true',
         AUTH_DISABLED: 'false', // Add this to control authentication in code
