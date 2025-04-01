@@ -13,7 +13,7 @@ export class BasicStrategy extends PassportStrategy(Strategy) {
     const user = await this.usersService.findOne(username);
     if (user && user.password === password) {
       return {
-        userId: user.id,
+        id: user.id, // This should be the correct UUID from the DB
         username: user.username,
       };
     }
