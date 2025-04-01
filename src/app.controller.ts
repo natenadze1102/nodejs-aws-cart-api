@@ -14,8 +14,9 @@ import {
   // JwtAuthGuard,
   BasicAuthGuard,
 } from './auth';
-import { User } from './users';
+
 import { AppRequest } from './shared';
+import { User } from './users/models/user.entity';
 
 @Controller()
 export class AppController {

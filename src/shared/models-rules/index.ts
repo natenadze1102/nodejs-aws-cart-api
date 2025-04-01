@@ -7,8 +7,8 @@ export function getUserIdFromRequest(req: AppRequest): string {
   console.log('User object in request:', JSON.stringify(user));
 
   // First try to get userId (which should be UUID for test users)
-  if (user?.userId) {
-    return user.userId.toString();
+  if (user?.id) {
+    return user.id.toString();
   }
 
   // Fallback to id
