@@ -4,6 +4,7 @@ import { Handler } from 'aws-lambda';
 import { configure as serverlessExpress } from '@codegenie/serverless-express';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import * as express from 'express';
+import { GlobalExceptionFilter } from './shared/filters/globalEceptionFilter';
 
 let cachedServer: Handler;
 
@@ -28,6 +29,8 @@ async function bootstrap(): Promise<Handler> {
     new ExpressAdapter(expressApp),
     { logger: ['log', 'error', 'warn', 'debug', 'verbose'] },
   );
+
+  nestApp.useGlobalFilters(new GlobalExceptionFilter());
 
   // Enable CORS with Nest's built-in method.
   // Note: when credentials is true, the origin must be explicit and without a trailing slash.

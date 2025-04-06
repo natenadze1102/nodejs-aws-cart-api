@@ -29,7 +29,11 @@ export class OrderService {
   }
 
   async findById(id: string): Promise<Order> {
-    return this.orderRepository.findOne({ where: { id } });
+    const order = await this.orderRepository.findOne({ where: { id } });
+    if (!order) {
+      throw new NotFoundException(`Order with id ${id} not found`);
+    }
+    return order;
   }
 
   async deleteOrder(id: string): Promise<void> {
@@ -107,6 +111,13 @@ export class OrderService {
   }
 
   async getStatusHistory(orderId: string): Promise<StatusHistory[]> {
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+    });
+    if (!order) {
+      throw new NotFoundException(`Order with id ${orderId} not found`);
+    }
+
     return this.statusHistoryRepository.find({
       where: { orderId },
       order: { timestamp: 'DESC' },
