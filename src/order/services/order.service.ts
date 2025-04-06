@@ -1,4 +1,9 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Order } from '../../models/order.entity';
@@ -25,6 +30,17 @@ export class OrderService {
 
   async findById(id: string): Promise<Order> {
     return this.orderRepository.findOne({ where: { id } });
+  }
+
+  async deleteOrder(id: string): Promise<void> {
+    // Delete all related status history records first.
+    await this.statusHistoryRepository.delete({ orderId: id });
+
+    // Now delete the order.
+    const result = await this.orderRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Order with id ${id} not found`);
+    }
   }
 
   async create(payload: CreateOrderPayload): Promise<Order> {

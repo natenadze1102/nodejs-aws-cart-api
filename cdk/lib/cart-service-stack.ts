@@ -60,23 +60,11 @@ export class CartServiceStack extends cdk.Stack {
     const api = new apigateway.RestApi(this, 'CartServiceApi', {
       restApiName: 'Cart Service API',
       description: 'API for Cart Service',
-      binaryMediaTypes: ['*/*'], // Allow all binary media types
+      // binaryMediaTypes: ['*/*'], // Allow all binary media types
       defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowOrigins: ['*'],
         allowMethods: apigateway.Cors.ALL_METHODS,
-        allowHeaders: [
-          'Content-Type',
-          'X-Amz-Date',
-          'Authorization',
-          'X-Api-Key',
-          'X-Amz-Security-Token',
-          'X-Requested-With',
-          'Accept',
-          'Origin',
-          'Access-Control-Allow-Headers',
-          'Access-Control-Allow-Methods',
-          'Access-Control-Allow-Origin',
-        ],
+        allowHeaders: ['Content-Type', 'Authorization', 'Accept'],
         allowCredentials: true,
       },
       deployOptions: {

@@ -6,6 +6,9 @@ import {
   Param,
   Put,
   UseGuards,
+  Delete,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { OrderService } from '../services/order.service';
 import { CreateOrderPayload, OrderStatus } from '../type';
@@ -34,6 +37,12 @@ export class OrderController {
   @Get(':id/history')
   async getOrderHistory(@Param('id') id: string) {
     return await this.orderService.getStatusHistory(id);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteOrder(@Param('id') id: string) {
+    await this.orderService.deleteOrder(id);
   }
 
   @Put(':id/status')

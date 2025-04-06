@@ -16,37 +16,34 @@ async function bootstrap(): Promise<Handler> {
   console.log('Creating new server instance');
   const expressApp = express();
 
-  // Add request logger middleware
+  // Use a simple logging middleware only (do not set CORS here)
   expressApp.use((req, res, next) => {
     console.log(`[REQUEST] ${req.method} ${req.path}`);
-    console.log('Headers:', JSON.stringify(req.headers));
     next();
   });
 
-  // Create NestJS app
+  // Create NestJS app using the Express adapter
   const nestApp = await NestFactory.create(
     AppModule,
     new ExpressAdapter(expressApp),
-    {
-      logger: ['log', 'error', 'warn', 'debug', 'verbose'],
-    },
+    { logger: ['log', 'error', 'warn', 'debug', 'verbose'] },
   );
 
-  // Enable CORS
+  // Enable CORS with Nest's built-in method.
+  // Note: when credentials is true, the origin must be explicit and without a trailing slash.
   nestApp.enableCors({
-    origin: '*',
+    origin: ['http://localhost:3000', 'https://dzeadadyb2u8g.cloudfront.net'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type,Accept,Authorization',
     credentials: true,
   });
 
-  // Add global prefix if needed
-  // nestApp.setGlobalPrefix('prod'); // Remove or adjust based on your API Gateway stage name
+  // Optionally, if your API Gateway stage adds a prefix (like '/prod'), uncomment:
+  // nestApp.setGlobalPrefix('prod');
 
-  // Initialize the app
   await nestApp.init();
 
-  // Configure serverless-express
+  // Configure serverless-express to use the Nest-powered Express app.
   cachedServer = serverlessExpress({ app: expressApp });
   return cachedServer;
 }
@@ -57,14 +54,13 @@ export const handler: Handler = async (event, context, callback) => {
     JSON.stringify(event, null, 2),
   );
 
-  // Important: API Gateway stage mappings and base paths
-  // Check if path includes the stage name (like /prod/api/auth/register)
+  // Remove stage prefix if applicable.
   if (event.path && event.path.startsWith('/prod/')) {
     console.log('Removing /prod prefix from path');
-    event.path = event.path.substring(5); // Remove '/prod' prefix
+    event.path = event.path.substring(5);
   }
 
-  // Normalize auth header case (API Gateway sometimes lowercases headers)
+  // Normalize auth header case.
   if (event.headers) {
     if (event.headers.authorization && !event.headers.Authorization) {
       event.headers.Authorization = event.headers.authorization;
@@ -72,7 +68,6 @@ export const handler: Handler = async (event, context, callback) => {
     }
   }
 
-  // For debugging
   console.log('Processed path:', event.path);
   console.log('Method:', event.httpMethod);
 
@@ -99,6 +94,7 @@ export const handler: Handler = async (event, context, callback) => {
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': true,
       },
       body: JSON.stringify({
         message: 'Internal server error',
