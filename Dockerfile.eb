@@ -1,0 +1,42 @@
+# Use Node.js LTS as the base image for better stability
+FROM node:slim
+
+# Set working directory
+WORKDIR /app
+
+# Set NODE_ENV and other environment variables
+ENV NODE_ENV=production
+
+# Install dumb-init for proper signal handling
+RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies including required validation packages with size optimization
+RUN npm ci --only=production --no-audit --no-optional && \
+    npm install class-validator class-transformer --save && \
+    npm cache clean --force && \
+    rm -rf /tmp/* && \
+    # Remove unnecessary files to minimize size
+    find /usr/local/lib/node_modules -type f -name "*.map" -delete && \
+    find /usr/local/lib/node_modules -type d -name "test" -o -name "tests" | xargs rm -rf || true && \
+    find /usr/local/lib/node_modules -type d -name "examples" -o -name "docs" | xargs rm -rf || true && \
+    find /usr/local/lib/node_modules -type f -name "CHANGELOG*" -o -name "README*" -o -name "LICENSE*" -delete
+
+# Copy the rest of the code
+COPY . .
+
+# Build the application
+RUN npm run build
+
+# Expose the port the app runs on
+EXPOSE 3000
+
+# Use dumb-init as the entry point
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+
+# Start the application
+CMD ["node", "dist/src/main.js"]
