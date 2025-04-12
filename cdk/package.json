@@ -1,0 +1,22 @@
+{
+  "name": "cart-service-cdk",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "rimraf build && tsc",
+    "cdk:deploy": "cdk deploy",
+    "cdk:diff": "cdk diff",
+    "deploy": "npm run build && npm run cdk:deploy",
+    "watch": "tsc -w"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.16",
+    "aws-cdk": "^2.178.2",
+    "rimraf": "^5.0.1",
+    "typescript": "~5.3.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.124.0",
+    "constructs": "^10.3.0",
+    "dotenv": "^16.4.1"
+  }
+}

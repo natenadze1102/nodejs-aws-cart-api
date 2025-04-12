@@ -1,0 +1,41 @@
+{
+  "exclude": [
+    "node_modules",
+    ".git",
+    "cdk.out",
+    "dist",
+    "test"
+  ],
+  "vpc-provider:account=595131344444:filter.isDefault=true:region=eu-central-1:returnAsymmetricSubnets=true": {
+    "vpcId": "vpc-01be5c11e89db18f5",
+    "vpcCidrBlock": "172.31.0.0/16",
+    "ownerAccountId": "595131344444",
+    "availabilityZones": [],
+    "subnetGroups": [
+      {
+        "name": "Public",
+        "type": "Public",
+        "subnets": [
+          {
+            "subnetId": "subnet-06e8c3411191a4feb",
+            "cidr": "172.31.16.0/20",
+            "availabilityZone": "eu-central-1a",
+            "routeTableId": "rtb-0c537f7649b4af73c"
+          },
+          {
+            "subnetId": "subnet-051f838ca840cc588",
+            "cidr": "172.31.32.0/20",
+            "availabilityZone": "eu-central-1b",
+            "routeTableId": "rtb-0c537f7649b4af73c"
+          },
+          {
+            "subnetId": "subnet-0b9e0a54f45f741b4",
+            "cidr": "172.31.0.0/20",
+            "availabilityZone": "eu-central-1c",
+            "routeTableId": "rtb-0c537f7649b4af73c"
+          }
+        ]
+      }
+    ]
+  }
+}
