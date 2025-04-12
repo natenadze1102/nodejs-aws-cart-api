@@ -1,0 +1,28 @@
+# Exclude node_modules as we'll install them within Docker
+node_modules/
+**/node_modules/
+
+# Exclude development files
+*.log
+*.md
+.git/
+.gitignore
+.github/
+.vscode/
+.idea/
+
+# Exclude test files
+test/
+**/*.spec.ts
+**/*.test.ts
+
+# Exclude ALL cdk files - we don't need them for EB deployment
+cdk/
+cdk.out/
+
+# Exclude dist (we build inside Docker)
+dist/
+
+# Others
+.DS_Store
+npm-debug.log

@@ -1,0 +1,53 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "natenadze1102/cart-api:latest",
+    "Update": "true"
+  },
+  "Ports": [
+    {
+      "ContainerPort": 3000,
+      "HostPort": 80
+    }
+  ],
+  "Volumes": [],
+  "Logging": "/var/log/nodejs",
+  "Environment": [
+    {
+      "Name": "NODE_OPTIONS",
+      "Value": "--max-old-space-size=4096"
+    },
+    {
+      "Name": "DB_HOST",
+      "Value": "cart-service-db.cd66u40eafyf.eu-central-1.rds.amazonaws.com"
+    },
+    {
+      "Name": "DB_PORT",
+      "Value": "5432"
+    },
+    {
+      "Name": "DB_USERNAME",
+      "Value": "postgres"
+    },
+    {
+      "Name": "DB_PASSWORD",
+      "Value": "1tCez7g1ere6DNgTwQS7"
+    },
+    {
+      "Name": "DB_NAME",
+      "Value": "cartdb"
+    },
+    {
+      "Name": "DB_SSL",
+      "Value": "true"
+    },
+    {
+      "Name": "DB_SYNC",
+      "Value": "true"
+    },
+    {
+      "Name": "DB_LOGGING",
+      "Value": "true"
+    }
+  ]
+}
